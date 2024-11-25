@@ -7,4 +7,5 @@ edition = "2021"
 crate-type = ["cdylib"] # Compile this crate to a dynamic C library.
 
 [dependencies]
+automerge = "0.5.12"
 godot = "0.2.0"

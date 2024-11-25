@@ -4,7 +4,6 @@ use godot::prelude::*;
 #[derive(GodotClass)]
 #[class(base=Sprite2D)]
 struct Player {
-    speed: f64,
     angular_speed: f64,
 
     base: Base<Sprite2D>,
@@ -18,7 +17,6 @@ impl ISprite2D for Player {
         godot_print!("Hello, world!"); // Prints to the Godot console
 
         Self {
-            speed: 8000.0,
             angular_speed: std::f64::consts::PI * 2.0,
             base,
         }

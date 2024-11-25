@@ -5,5 +5,5 @@ struct MyExtension;
 #[gdextension]
 unsafe impl ExtensionLibrary for MyExtension {}
 
+mod am;
 mod player;
-pub use player::*;
