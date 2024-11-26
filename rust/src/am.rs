@@ -37,4 +37,13 @@ impl AutomergeDoc {
             })
             .unwrap_or_default()
     }
+
+    #[func]
+    fn history(&mut self) -> Vec<GString> {
+        self.doc
+            .get_changes(&[])
+            .into_iter()
+            .map(|c| GString::from(c.hash().to_string()))
+            .collect::<Vec<_>>()
+    }
 }
