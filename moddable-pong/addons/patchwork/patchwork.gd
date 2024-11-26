@@ -14,7 +14,10 @@ func _enter_tree() -> void:
 
   # add history sidebar
   history_sidebar = preload("res://addons/patchwork/history_sidebar.tscn").instantiate()
+
   history_sidebar.init(doc)
+
+  
   add_control_to_dock(DOCK_SLOT_RIGHT_UL, history_sidebar)
 
 
@@ -24,4 +27,5 @@ func _exit_tree() -> void:
     file_system_sync.destroy()
     file_system_sync = null
 
-  remove_control_from_docks(history_sidebar)
+  if history_sidebar:
+    remove_control_from_docks(history_sidebar)

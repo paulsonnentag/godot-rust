@@ -1,29 +1,34 @@
-use std::str::FromStr;
-
 use automerge::ChangeHash;
 use automerge::{transaction::Transactable, AutoCommit, ReadDoc, ScalarValue, Value};
 use godot::classes::INode;
 use godot::prelude::*;
+use std::str::FromStr;
 
 #[derive(GodotClass)]
 #[class(base=Node)]
 pub struct AutomergeDoc {
     pub doc: AutoCommit,
+
+    base: Base<Node>,
 }
 
 #[godot_api]
 impl INode for AutomergeDoc {
-    fn init(_base: Base<Node>) -> Self {
+    fn init(base: Base<Node>) -> Self {
         let doc = AutoCommit::new();
-        Self { doc }
+        Self { doc, base }
     }
 }
 
 #[godot_api]
 impl AutomergeDoc {
+    #[signal]
+    fn changed();
+
     #[func]
     fn set(&mut self, key: String, value: String) {
         self.doc.put(automerge::ROOT, key, value);
+        self.base_mut().emit_signal("changed", &[]);
     }
 
     #[func]
