@@ -6,4 +6,3 @@ struct MyExtension;
 unsafe impl ExtensionLibrary for MyExtension {}
 
 mod am;
-mod player;

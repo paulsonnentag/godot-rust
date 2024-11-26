@@ -1,7 +1,6 @@
-use automerge::{transaction::Transactable, AutoCommit, ReadDoc};
+use automerge::{transaction::Transactable, AutoCommit, ReadDoc, ScalarValue, Value};
 use godot::classes::INode;
 use godot::prelude::*;
-use std::borrow::Cow;
 
 #[derive(GodotClass)]
 #[class(base=Node)]
@@ -11,7 +10,7 @@ pub struct AutomergeDoc {
 
 #[godot_api]
 impl INode for AutomergeDoc {
-    fn init(base: Base<Node>) -> Self {
+    fn init(_base: Base<Node>) -> Self {
         let doc = AutoCommit::new();
         Self { doc }
     }
@@ -26,9 +25,16 @@ impl AutomergeDoc {
 
     #[func]
     fn get(&self, key: String) -> String {
-        match self.doc.get(automerge::ROOT, &key) {
-            Ok(Some((val, _))) => val.to_string(),
-            _ => String::new(),
-        }
+        self.doc
+            .get(automerge::ROOT, &key)
+            .unwrap()
+            .map(|val| match val {
+                (Value::Scalar(val), automerge::ObjId::Id(_, actor_id, _)) => match val.as_ref() {
+                    ScalarValue::Str(smol_str) => smol_str.to_string(),
+                    _ => panic!("not a string"),
+                },
+                _ => panic!("not a string"),
+            })
+            .unwrap_or_default()
     }
 }
