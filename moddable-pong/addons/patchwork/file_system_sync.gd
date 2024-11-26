@@ -4,10 +4,9 @@ class_name FileSystemSync
 var file_system: EditorFileSystem
 var doc: AutomergeDoc
 
-func _init(file_system: EditorFileSystem):
+func _init(file_system: EditorFileSystem, doc: AutomergeDoc):
   self.file_system = file_system
-
-  doc = AutomergeDoc.new()
+  self.doc = doc
 
   file_system.connect("filesystem_changed", _on_filesystem_changed)
   file_system.connect("resources_reload", _on_resources_reloaded)

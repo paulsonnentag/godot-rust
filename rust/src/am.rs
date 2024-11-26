@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use automerge::ChangeHash;
 use automerge::{transaction::Transactable, AutoCommit, ReadDoc, ScalarValue, Value};
 use godot::classes::INode;
 use godot::prelude::*;
@@ -27,6 +30,25 @@ impl AutomergeDoc {
     fn get(&self, key: String) -> String {
         self.doc
             .get(automerge::ROOT, &key)
+            .unwrap()
+            .map(|val| match val {
+                (Value::Scalar(val), automerge::ObjId::Id(_, actor_id, _)) => match val.as_ref() {
+                    ScalarValue::Str(smol_str) => smol_str.to_string(),
+                    _ => panic!("not a string"),
+                },
+                _ => panic!("not a string"),
+            })
+            .unwrap_or_default()
+    }
+
+    #[func]
+    fn get_at(&self, key: String, hash: String) -> String {
+        self.doc
+            .get_at(
+                automerge::ROOT,
+                &key,
+                &[ChangeHash::from_str(&hash).expect("invalid hash")],
+            )
             .unwrap()
             .map(|val| match val {
                 (Value::Scalar(val), automerge::ObjId::Id(_, actor_id, _)) => match val.as_ref() {
