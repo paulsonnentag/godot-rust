@@ -9,6 +9,11 @@ var history_sidebar
 func _enter_tree() -> void:
   doc = AutomergeDoc.new()
 
+  print("this")
+
+  var repo = AutomergeRepo.new()
+  repo.destroy()
+
   # setup file system sync
   file_system_sync = FileSystemSync.new(get_editor_interface(), doc)
 
