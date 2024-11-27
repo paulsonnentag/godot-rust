@@ -46,7 +46,10 @@ async fn main() {
 
     println!("done");
 
+    tokio::signal::ctrl_c().await.unwrap();
     /*tokio::signal::ctrl_c()
     .await
     .expect("failed to listen for event");*/
+
+    repo_handle.stop().unwrap()
 }

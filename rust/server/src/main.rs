@@ -2,9 +2,12 @@ use automerge_repo::tokio::FsStorage;
 use automerge_repo::{ConnDirection, Repo};
 use tokio::net::TcpListener;
 use tokio::runtime::Handle;
+use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let storage = FsStorage::open("/tmp/automerge-server-data").unwrap();
     let repo = Repo::new(None, Box::new(storage));
     let repo_handle = repo.run();
@@ -29,4 +32,6 @@ async fn main() {
     });
 
     tokio::signal::ctrl_c().await.unwrap();
+
+    repo_handle.stop().unwrap();
 }
