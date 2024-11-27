@@ -21,10 +21,15 @@ async fn main() {
             match listener.accept().await {
                 Ok((socket, addr)) => {
                     println!("client connected");
-                    repo_clone
-                        .connect_tokio_io(addr, socket, ConnDirection::Incoming)
-                        .await
-                        .unwrap();
+                    tokio::spawn({
+                        let repo_clone = repo_clone.clone();
+                        async move {
+                            repo_clone
+                            .connect_tokio_io(addr, socket, ConnDirection::Incoming)
+                            .await
+                            .unwrap();
+                        }
+                    });
                 }
                 Err(e) => println!("couldn't get client: {:?}", e),
             }
