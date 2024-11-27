@@ -5,18 +5,19 @@ use tokio::runtime::Handle;
 
 #[tokio::main]
 async fn main() {
-    let storage = FsStorage::open("/tmp/bla").unwrap();
+    let storage = FsStorage::open("/tmp/automerge-server-data").unwrap();
     let repo = Repo::new(None, Box::new(storage));
     let repo_handle = repo.run();
 
     let handle = Handle::current();
-    let repo_clone = repo_handle.clone();
 
+    let repo_clone = repo_handle.clone();
     handle.spawn(async move {
         let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
         loop {
             match listener.accept().await {
                 Ok((socket, addr)) => {
+                    println!("client connected");
                     repo_clone
                         .connect_tokio_io(addr, socket, ConnDirection::Incoming)
                         .await
@@ -27,7 +28,5 @@ async fn main() {
         }
     });
 
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to listen for event");
+    tokio::signal::ctrl_c().await.unwrap();
 }

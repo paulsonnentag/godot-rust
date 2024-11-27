@@ -1,12 +1,2 @@
-[package]
-name = "rust_project" # Part of dynamic library name; we use {YourCrate} placeholder.
-version = "0.1.0"     # You can leave version and edition as-is for now.
-edition = "2021"
-
-[lib]
-crate-type = ["cdylib"] # Compile this crate to a dynamic C library.
-
-[dependencies]
-automerge = "0.5.12"
-automerge_repo = { git = "https://github.com/automerge/automerge-repo-rs", version = "0.1.0" }
-godot = "0.2.0"
+[workspace]
+members = ["client", "server", "plugin"]

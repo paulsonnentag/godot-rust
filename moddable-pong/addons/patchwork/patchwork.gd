@@ -12,7 +12,6 @@ func _enter_tree() -> void:
   print("this")
 
   var repo = AutomergeRepo.new()
-  repo.destroy()
 
   # setup file system sync
   file_system_sync = FileSystemSync.new(get_editor_interface(), doc)
