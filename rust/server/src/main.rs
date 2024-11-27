@@ -4,7 +4,7 @@ use tokio::net::TcpListener;
 use tokio::runtime::Handle;
 use tracing_subscriber;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     tracing_subscriber::fmt::init();
 

@@ -5,7 +5,7 @@ use automerge_repo::tokio::FsStorage;
 use automerge_repo::{ConnDirection, Repo};
 use tokio::net::TcpStream;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     tracing_subscriber::fmt::init();
     let storage = FsStorage::open("/tmp/automerge-client-data").unwrap();
@@ -23,7 +23,7 @@ async fn main() {
         break res.unwrap();
     };
 
-    let task = tokio::spawn({
+    let _task = tokio::spawn({
         let repo_handle = repo_handle.clone();
         async move {
             repo_handle
@@ -55,16 +55,7 @@ async fn main() {
 
     println!("done");
 
-    tokio::select! {
-        _ = tokio::signal::ctrl_c() => {
-            println!("ctrl-c received");
-            repo_handle.stop().unwrap()
-        },
-        listen_res = task => {
-            println!("listen task finished unexpectedly: {:?}", listen_res);
-            repo_handle.stop().unwrap();
-            exit(0)
-        }
-    };
+    tokio::signal::ctrl_c().await.unwrap();
+    repo_handle.stop().unwrap();
 
 }
