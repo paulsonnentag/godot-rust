@@ -1,12 +1,14 @@
 @tool
 extends Control
 
+signal selected_version(version: String)
+
 var doc: AutomergeDoc
 
 @onready var versions_list: ItemList = %VersionsList
 
 func _ready() -> void:
-  print("init!!!")
+  versions_list.item_selected.connect(_on_version_selected)
   
 func init(doc: AutomergeDoc) -> void:
   self.doc = doc
@@ -22,3 +24,6 @@ func _refresh_versions_list() -> void:
   # Add each version to the list
   for version in doc.history():
     versions_list.add_item(version)
+
+func _on_version_selected(index: int) -> void:
+  selected_version.emit(versions_list.get_item_text(index))
