@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use automerge::{transaction::Transactable, ReadDoc};
 use automerge_repo::tokio::FsStorage;
 use automerge_repo::{ConnDirection, Repo};
@@ -5,6 +7,7 @@ use tokio::net::TcpStream;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
     let storage = FsStorage::open("/tmp/automerge-client-data").unwrap();
     let repo = Repo::new(None, Box::new(storage));
     let repo_handle = repo.run();
@@ -19,10 +22,16 @@ async fn main() {
         }
         break res.unwrap();
     };
-    repo_handle
-        .connect_tokio_io("127.0.0.1:8080", stream, ConnDirection::Outgoing)
-        .await
-        .unwrap();
+
+    let task = tokio::spawn({
+        let repo_handle = repo_handle.clone();
+        async move {
+            repo_handle
+                .connect_tokio_io("127.0.0.1:8080", stream, ConnDirection::Outgoing)
+                .await
+                .unwrap()
+        }
+    });
 
     let document_handle = repo_handle.new_document();
 
@@ -46,10 +55,16 @@ async fn main() {
 
     println!("done");
 
-    tokio::signal::ctrl_c().await.unwrap();
-    /*tokio::signal::ctrl_c()
-    .await
-    .expect("failed to listen for event");*/
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            println!("ctrl-c received");
+            repo_handle.stop().unwrap()
+        },
+        listen_res = task => {
+            println!("listen task finished unexpectedly: {:?}", listen_res);
+            repo_handle.stop().unwrap();
+            exit(0)
+        }
+    };
 
-    repo_handle.stop().unwrap()
 }
