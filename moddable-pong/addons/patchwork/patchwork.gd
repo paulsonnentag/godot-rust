@@ -7,30 +7,32 @@ var current_file: String
 
 var history_sidebar
 func _enter_tree() -> void:
-  doc = AutomergeDoc.new()
+
 
   print("this")
 
   var repo = AutomergeRepo.new()
 
+  print("that")
+
   # setup file system sync
-  file_system_sync = FileSystemSync.new(get_editor_interface(), doc)
+  # file_system_sync = FileSystemSync.new(get_editor_interface(), doc)
 
-  # add history sidebar
-  history_sidebar = preload("res://addons/patchwork/history_sidebar.tscn").instantiate()
+  # # add history sidebar
+  # history_sidebar = preload("res://addons/patchwork/history_sidebar.tscn").instantiate()
 
-  history_sidebar.init(doc)
+  # history_sidebar.init(doc)
 
-  history_sidebar.selected_version.connect(_on_select_version)
+  # history_sidebar.selected_version.connect(_on_select_version)
 
-  add_control_to_dock(DOCK_SLOT_RIGHT_UL, history_sidebar)
+  # add_control_to_dock(DOCK_SLOT_RIGHT_UL, history_sidebar)
 
 
 func _on_select_version(version: String) -> void:
   if !current_file:
     return
     
-  file_system_sync.checkout(current_file, version)
+  # file_system_sync.checkout(current_file, version)
 
 
 func _process(delta: float) -> void:

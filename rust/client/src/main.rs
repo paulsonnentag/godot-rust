@@ -1,7 +1,4 @@
-use std::process::exit;
-use std::time::Duration;
-
-use automerge::{transaction::Transactable, ReadDoc};
+use automerge::transaction::Transactable;
 use automerge_repo::tokio::FsStorage;
 use automerge_repo::{ConnDirection, Repo};
 use tokio::net::TcpStream;
@@ -45,5 +42,4 @@ async fn main() {
 
     tokio::signal::ctrl_c().await.unwrap();
     repo_handle.stop().unwrap();
-
 }
