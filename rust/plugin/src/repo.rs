@@ -9,12 +9,16 @@ use automerge_repo::{tokio::FsStorage, ConnDirection, Repo};
 use tokio::net::TcpStream;
 
 #[derive(GodotClass)]
-#[class(base=Node)]
+#[class(no_init, base=Node)]
 pub struct AutomergeRepo {}
 
 #[godot_api]
-impl INode for AutomergeRepo {
-    fn init(base: Base<Node>) -> Self {
+impl INode for AutomergeRepo {}
+
+#[godot_api]
+impl AutomergeRepo {
+    #[func]
+    fn run() {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -22,6 +26,8 @@ impl INode for AutomergeRepo {
         let _guard = runtime.enter();
 
         println!("outside the spawned thing!");
+
+        godot_print!("init Automerge Repo");
 
         let _ = tracing_subscriber::fmt::try_init();
 
@@ -77,9 +83,6 @@ impl INode for AutomergeRepo {
 
         std::thread::sleep(Duration::from_secs(1));
 
-        return Self {};
+        //return Self {};
     }
 }
-
-#[godot_api]
-impl AutomergeRepo {}
