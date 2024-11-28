@@ -14,6 +14,7 @@ func _enter_tree() -> void:
 
   repo.inc_value("08d79d8e432046c0b8df0e320d5edf0b");
   repo.get_value("08d79d8e432046c0b8df0e320d5edf0b");
+  repo.subscribe("08d79d8e432046c0b8df0e320d5edf0b");
 
   # var repo = AutomergeRepo.new()
 
