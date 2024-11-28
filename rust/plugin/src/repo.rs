@@ -1,4 +1,4 @@
-use std::thread::panicking;
+use std::{thread::panicking, time::Duration};
 
 use automerge::transaction::Transactable;
 use godot::classes::INode;
@@ -28,7 +28,7 @@ impl INode for AutomergeRepo {
         runtime.spawn(async move {
             println!("inside the spawned thing");
 
-            let storage = FsStorage::open("/tmp/automerge-client-data").unwrap();
+            let storage = FsStorage::open("/tmp/automerge-godot-data").unwrap();
             let repo = Repo::new(None, Box::new(storage));
             let repo_handle = repo.run();
 
@@ -73,7 +73,9 @@ impl INode for AutomergeRepo {
             repo_handle.stop().unwrap();
         });
 
-        godot_print!("done");
+        //godot_print!("done");
+
+        std::thread::sleep(Duration::from_secs(1));
 
         return Self {};
     }
