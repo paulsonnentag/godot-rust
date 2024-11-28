@@ -5,20 +5,19 @@ use godot::classes::INode;
 use godot::global::godot_print;
 use godot::prelude::*;
 
-use automerge_repo::{tokio::FsStorage, ConnDirection, Repo};
+use automerge_repo::{tokio::FsStorage, ConnDirection, Repo, RepoHandle};
 use tokio::net::TcpStream;
 
 #[derive(GodotClass)]
 #[class(no_init, base=Node)]
-pub struct AutomergeRepo {}
-
-#[godot_api]
-impl INode for AutomergeRepo {}
+pub struct AutomergeRepo {
+    repo_handle: RepoHandle,
+}
 
 #[godot_api]
 impl AutomergeRepo {
     #[func]
-    fn run() {
+    fn run() -> Gd<Self> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -31,14 +30,15 @@ impl AutomergeRepo {
 
         let _ = tracing_subscriber::fmt::try_init();
 
+        let storage = FsStorage::open("/tmp/automerge-godot-data").unwrap();
+        let repo = Repo::new(None, Box::new(storage));
+        let repo_handle = repo.run();
+        let repo_handle_cloned = repo_handle.clone();
+
         runtime.spawn(async move {
             println!("inside the spawned thing");
 
-            let storage = FsStorage::open("/tmp/automerge-godot-data").unwrap();
-            let repo = Repo::new(None, Box::new(storage));
-            let repo_handle = repo.run();
-
-            let document_handle = repo_handle.new_document();
+            let document_handle = repo_handle_cloned.new_document();
 
             println!("start a client");
 
@@ -55,7 +55,7 @@ impl AutomergeRepo {
 
             println!("connect repo");
 
-            repo_handle
+            repo_handle_cloned
                 .connect_tokio_io("127.0.0.1:8080", stream, ConnDirection::Outgoing)
                 .await
                 .unwrap();
@@ -76,13 +76,13 @@ impl AutomergeRepo {
             println!("done");
 
             tokio::signal::ctrl_c().await.unwrap();
-            repo_handle.stop().unwrap();
+            repo_handle_cloned.stop().unwrap();
         });
 
         //godot_print!("done");
 
         std::thread::sleep(Duration::from_secs(1));
 
-        //return Self {};
+        return Gd::from_init_fn(|base| Self { repo_handle });
     }
 }
