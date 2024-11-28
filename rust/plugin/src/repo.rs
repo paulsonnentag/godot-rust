@@ -122,4 +122,40 @@ impl AutomergeRepo {
 
         std::thread::sleep(Duration::from_secs(1));
     }
+
+    #[func]
+    fn inc_value(&self, doc_id_string: String) {
+        let repo_handle = self.repo_handle.clone();
+        self.runtime.spawn(async move {
+            let doc_id = DocumentId::from_str(&doc_id_string).unwrap();
+            let doc_handle = repo_handle.request_document(doc_id);
+
+            let result = doc_handle.await.unwrap();
+
+            result.with_doc_mut(|d| {
+                let value: i64 = d
+                    .get(automerge::ROOT, "counter")
+                    .unwrap()
+                    .map(|val| match val {
+                        (Value::Scalar(val), automerge::ObjId::Id(_, actor_id, _)) => {
+                            match val.as_ref() {
+                                ScalarValue::Int(num) => *num,
+                                _ => panic!("not a number"),
+                            }
+                        }
+                        _ => panic!("not a number"),
+                    })
+                    .unwrap_or_default();
+
+                let mut tx = d.transaction();
+                tx.put(automerge::ROOT, "counter", value + 1)
+                    .expect("Failed to change the document.");
+                tx.commit();
+
+                return;
+            });
+        });
+
+        std::thread::sleep(Duration::from_secs(1));
+    }
 }
