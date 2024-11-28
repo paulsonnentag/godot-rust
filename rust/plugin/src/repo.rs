@@ -155,8 +155,6 @@ impl AutomergeRepo {
                 return;
             });
         });
-
-        std::thread::sleep(Duration::from_secs(1));
     }
 
     #[func]
@@ -190,7 +188,5 @@ impl AutomergeRepo {
                 });
             }
         });
-
-        std::thread::sleep(Duration::from_secs(1));
     }
 }
