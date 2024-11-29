@@ -35,7 +35,7 @@ movie_writer/movie_file="/tmp/moddable-pong-recording.avi"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/DampedOscillator/plugin.cfg", "res://addons/kenyoni/plugin_reloader/plugin.cfg", "res://addons/patchwork/plugin.cfg")
+enabled=PackedStringArray("res://addons/DampedOscillator/plugin.cfg", "res://addons/patchwork/plugin.cfg", "res://addons/plugin_refresher/plugin.cfg")
 
 [input]
 
