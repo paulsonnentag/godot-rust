@@ -1,4 +1,7 @@
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    sync::mpsc::{channel, Receiver, Sender},
+};
 
 use automerge::{transaction::Transactable, ChangeHash, Patch, ScalarValue};
 use godot::{obj::WithBaseField, prelude::*};
@@ -14,6 +17,13 @@ pub struct AutomergeFS {
     runtime: Runtime,
     fs_doc_id: DocumentId,
     base: Base<Node>,
+    sender: Sender<FileUpdate>,
+    receiver: Receiver<FileUpdate>,
+}
+
+struct FileUpdate {
+    path: String,
+    content: String,
 }
 
 #[godot_api]
@@ -60,11 +70,15 @@ impl AutomergeFS {
                 .unwrap();
         });
 
+        let (sender, receiver) = channel::<FileUpdate>();
+
         return Gd::from_init_fn(|base| Self {
             repo_handle,
             fs_doc_id: doc_id,
             runtime,
             base,
+            sender,
+            receiver,
         });
     }
 
@@ -76,11 +90,28 @@ impl AutomergeFS {
         //self.runtime.shutdown_background();
     }
 
+    // needs to be called in godot on each frame
+    #[func]
+    fn refresh(&mut self) {
+        let update = self.receiver.try_recv();
+
+        match update {
+            Ok(update) => {
+                self.base_mut().emit_signal(
+                    "file_changed",
+                    &[update.path.to_variant(), update.content.to_variant()],
+                );
+            }
+            Err(_) => (),
+        }
+    }
+
     #[func]
     fn start(&self) {
         // listen for changes to fs doc
         let repo_handle_change_listener = self.repo_handle.clone();
         let fs_doc_id = self.fs_doc_id.clone();
+        let sender = self.sender.clone();
 
         self.runtime.spawn(async move {
             let doc_handle = repo_handle_change_listener
@@ -105,52 +136,27 @@ impl AutomergeFS {
                                 action,
                             } => {
                                 if path.is_empty() {
-                                    match action {
-                                        automerge::PatchAction::PutMap {
-                                            key,
-                                            value: (v, _),
-                                            conflict: _,
-                                        } => match v {
-                                            // this is dumb that I have two duplicate cases here
-                                            // there is probably a better way to do this but the .to_ref trick didn't work here
-                                            automerge::Value::Scalar(v) => match v {
-                                                std::borrow::Cow::Borrowed(ScalarValue::Str(
-                                                    smol_str,
-                                                )) => {
-                                                    // RUST is angry with me because I'm accessing self in the spawned thread
-                                                    /*  self.base_mut().emit_signal(
-                                                        "file_changed",
-                                                        &[
-                                                            key.to_variant(),
-                                                            smol_str.to_string().to_variant(),
-                                                        ],
-                                                    ); */
-                                                    return;
-                                                }
-                                                std::borrow::Cow::Owned(ScalarValue::Str(
-                                                    smol_str,
-                                                )) => {
-                                                    /* self.base_mut().emit_signal(
-                                                        "file_changed",
-                                                        &[
-                                                            key.to_variant(),
-                                                            smol_str.to_string().to_variant(),
-                                                        ],
-                                                    ); */
-                                                    return;
-                                                }
-                                                _ => (),
-                                            },
+                                    if let automerge::PatchAction::PutMap {
+                                        key,
+                                        value: (automerge::Value::Scalar(v), _),
+                                        ..
+                                    } = action
+                                    {
+                                        match v.as_ref() {
+                                            ScalarValue::Str(smol_str) => {
+                                                println!("rust: send {:?}", key);
+
+                                                let _ = sender.send(FileUpdate {
+                                                    path: key,
+                                                    content: smol_str.to_string(),
+                                                });
+                                            }
                                             _ => (),
-                                        },
-                                        _ => (),
+                                        }
                                     }
                                 }
                             }
-                            _ => (),
                         }
-
-                        // println!("patch: {:?}", patch);
                     }
 
                     heads = new_heads
