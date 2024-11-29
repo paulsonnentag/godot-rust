@@ -1,7 +1,6 @@
-use std::{str::FromStr, thread::panicking, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 use automerge::{transaction::Transactable, ReadDoc, ScalarValue, Value};
-use godot::classes::INode;
 use godot::global::godot_print;
 use godot::prelude::*;
 
@@ -155,6 +154,8 @@ impl AutomergeRepo {
                 return;
             });
         });
+
+        std::thread::sleep(Duration::from_secs(1));
     }
 
     #[func]
@@ -188,5 +189,7 @@ impl AutomergeRepo {
                 });
             }
         });
+
+        std::thread::sleep(Duration::from_secs(1));
     }
 }
