@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bel3lwsvc2uc3"]
+[gd_scene load_steps=10 format=3 uid="uid://bel3lwsvc2uc3"]
 
 [ext_resource type="PackedScene" uid="uid://s7enbp56f256" path="res://components/paddles/basic_paddle.tscn" id="1_xxpg5"]
 [ext_resource type="PackedScene" uid="uid://cg1m4evi8c35o" path="res://components/other/spawner.tscn" id="3_spct4"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://bis7afjjuwypq" path="res://hud.tscn" id="4_4868o"]
 [ext_resource type="PackedScene" uid="uid://cg8ibi18um3vg" path="res://spaces/basic_space.tscn" id="4_nvjpm"]
 [ext_resource type="PackedScene" uid="uid://c7l70grmkauij" path="res://components/balls/basic_ball.tscn" id="4_rffv2"]
+[ext_resource type="Texture2D" uid="uid://ci2yj8qmwlhjr" path="res://assets/textures/balls/basic_ball_4.png" id="5_w5nc4"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_guyqd"]
 size = Vector2(10, 1080)
@@ -32,8 +33,10 @@ spawn_area = SubResource("RectangleShape2D_guyqd")
 life_time = 0.0
 
 [node name="BasicBall" parent="BallSpawner" instance=ExtResource("4_rffv2")]
-position = Vector2(-475, -113)
+position = Vector2(-481, -1)
 linear_velocity = Vector2(353.553, 353.553)
+size = 2.6
+texture = ExtResource("5_w5nc4")
 tint = Color(0.509804, 0.360784, 0.972549, 1)
 
 [node name="GameLogic" parent="." instance=ExtResource("3_umelw")]

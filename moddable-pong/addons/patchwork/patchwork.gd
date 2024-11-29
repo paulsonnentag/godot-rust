@@ -6,7 +6,6 @@ var automerge_fs: AutomergeFS
 var history_sidebar
 
 func _enter_tree() -> void:
-
   # /efc9/08d79d8e432046c0b8df0e320d5edf0
   automerge_fs = AutomergeFS.create("08d79d8e432046c0b8df0e320d5edf0b")
   automerge_fs.start();
@@ -32,6 +31,16 @@ func _on_remote_file_changed(path: String, content: String) -> void:
   if not path.ends_with("main.tscn"):
     return
 
+  var file = FileAccess.open(path, FileAccess.WRITE)
+  if not file:
+    return
+    
+  # Write the content to the file
+  file.store_string(content)
+  file.close()
+  
+  # Reload file
+  get_editor_interface().reload_scene_from_path(path)
   print("remote file changed ", path);
 
 
