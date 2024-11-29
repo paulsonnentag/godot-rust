@@ -5,5 +5,4 @@ struct MyExtension;
 #[gdextension]
 unsafe impl ExtensionLibrary for MyExtension {}
 
-mod am;
-mod repo;
+mod automerge_fs;

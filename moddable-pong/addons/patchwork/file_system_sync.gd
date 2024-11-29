@@ -3,14 +3,14 @@ class_name FileSystemSync
 
 var editor_interface: EditorInterface
 var file_system: EditorFileSystem
-var doc: AutomergeDoc
+#var doc: AutomergeDoc
 
 var listener_disabled = false
 
-func _init(editor_interface: EditorInterface, doc: AutomergeDoc):
+func _init(editor_interface: EditorInterface):
   self.editor_interface = editor_interface
   file_system = editor_interface.get_resource_filesystem()
-  self.doc = doc
+  #self.doc = doc
 
   print("fs", file_system)
 
@@ -25,29 +25,30 @@ func destroy():
 
 # todo: change the other files as well
 func checkout(path: String, version: String):
-  var file = FileAccess.open(path, FileAccess.WRITE)
-  if not file:
-    return
+  pass
+  # var file = FileAccess.open(path, FileAccess.WRITE)
+  # if not file:
+  #   return
     
-  # Get the content at the specified version
-  var content = doc.get_at(path, version)
-  if not content:
-    return
+  # # Get the content at the specified version
+  # var content = doc.get_at(path, version)
+  # if not content:
+  #   return
     
-  # Write the content to the file
-  file.store_string(content)
-  file.close()
+  # # Write the content to the file
+  # file.store_string(content)
+  # file.close()
   
-  # Trigger filesystem scan to detect changes
+  # # Trigger filesystem scan to detect changes
 
   
-  listener_disabled = true
+  # listener_disabled = true
 
 
-  print("reload", path)
-  editor_interface.reload_scene_from_path(path)
+  # print("reload", path)
+  # editor_interface.reload_scene_from_path(path)
 
-  listener_disabled = false
+  # listener_disabled = false
 
   
 func _on_filesystem_changed():
@@ -90,24 +91,26 @@ func _scan_directory(dir: DirAccess, current_path: String):
       file_name = dir.get_next()
 
 func _check_file_changes(file_path: String):
-  # hack: ignore all files that are not main.tscn
-  if not file_path.ends_with("main.tscn"):
-    return
+  pass
+  # # hack: ignore all files that are not main.tscn
+  # if not file_path.ends_with("main.tscn"):
+  #   return
 
-  # Skip files that aren't GDScript or scene file
-  if not file_path.ends_with(".gd") and not file_path.ends_with(".tscn"):
-    return
+  # # Skip files that aren't GDScript or scene file
+  # if not file_path.ends_with(".gd") and not file_path.ends_with(".tscn"):
+  #   return
 
-  var file = FileAccess.open(file_path, FileAccess.READ)
-  if not file:
-      return
+  # var file = FileAccess.open(file_path, FileAccess.READ)
+  # if not file:
+  #     return
   
-  var content = file.get_as_text(true)
-  var stored_content = doc.get(file_path)
+  # var content = file.get_as_text(true)
+  # var stored_content = doc.get(file_path)
 
-  if content != stored_content:
-    _handle_file_changed(file_path, content)
+  # if content != stored_content:
+  #   _handle_file_changed(file_path, content)
     
 func _handle_file_changed(file_path: String, content: String):
-  print("File changed: ", file_path)
-  doc.set(file_path, content)
+  pass
+  # print("File changed: ", file_path)
+  # doc.set(file_path, content)

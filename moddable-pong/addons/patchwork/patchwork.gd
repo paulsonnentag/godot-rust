@@ -2,23 +2,20 @@
 extends EditorPlugin
 
 var file_system_sync: FileSystemSync
-var doc: AutomergeDoc
 var current_file: String
 
-var repo: AutomergeRepo
+var automerge_fs: AutomergeFS
 
 var history_sidebar
 func _enter_tree() -> void:
 
 
-  var repo = AutomergeRepo.create()
-
+  var automerge_fs = AutomergeFS.create("08d79d8e432046c0b8df0e320d5edf0b")
 
   # /efc9/08d79d8e432046c0b8df0e320d5edf0
 
-  repo.inc_value("08d79d8e432046c0b8df0e320d5edf0b");
-  repo.get_value("08d79d8e432046c0b8df0e320d5edf0b");
-  repo.subscribe("08d79d8e432046c0b8df0e320d5edf0b");
+  automerge_fs.save("_test", Time.get_datetime_string_from_system());
+
 
   # var repo = AutomergeRepo.new()
 
@@ -55,5 +52,5 @@ func _exit_tree() -> void:
   if history_sidebar:
     remove_control_from_docks(history_sidebar)
 
-  if repo:
-    repo.stop();
+  if automerge_fs:
+    automerge_fs.stop();
