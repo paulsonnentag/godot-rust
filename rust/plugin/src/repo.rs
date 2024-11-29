@@ -38,8 +38,6 @@ impl AutomergeRepo {
         runtime.spawn(async move {
             println!("inside the spawned thing");
 
-            let document_handle = repo_handle_cloned.new_document();
-
             println!("start a client");
 
             // Start a client.
@@ -59,34 +57,17 @@ impl AutomergeRepo {
                 .connect_tokio_io("127.0.0.1:8080", stream, ConnDirection::Outgoing)
                 .await
                 .unwrap();
-
-            println!("create doc");
-
-            document_handle.with_doc_mut(|doc| {
-                let mut tx = doc.transaction();
-                tx.put(automerge::ROOT, "counter", 0)
-                    .expect("Failed to change the document.");
-                tx.commit();
-            });
-
-            println!("do");
-
-            document_handle.changed().await.unwrap();
-
-            println!("done");
-
-            tokio::signal::ctrl_c().await.unwrap();
-            repo_handle_cloned.stop().unwrap();
         });
-
-        //godot_print!("done");
-
-        std::thread::sleep(Duration::from_secs(1));
 
         return Gd::from_init_fn(|base| Self {
             repo_handle,
             runtime,
         });
+    }
+
+    #[func]
+    fn stop(&self) {
+        self.repo_handle.clone().stop().unwrap();
     }
 
     #[func]
@@ -118,8 +99,6 @@ impl AutomergeRepo {
                 return;
             });
         });
-
-        std::thread::sleep(Duration::from_secs(1));
     }
 
     #[func]
@@ -154,8 +133,6 @@ impl AutomergeRepo {
                 return;
             });
         });
-
-        std::thread::sleep(Duration::from_secs(1));
     }
 
     #[func]
@@ -189,7 +166,5 @@ impl AutomergeRepo {
                 });
             }
         });
-
-        std::thread::sleep(Duration::from_secs(1));
     }
 }

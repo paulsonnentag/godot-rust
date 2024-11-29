@@ -5,6 +5,8 @@ var file_system_sync: FileSystemSync
 var doc: AutomergeDoc
 var current_file: String
 
+var repo: AutomergeRepo
+
 var history_sidebar
 func _enter_tree() -> void:
 
@@ -52,3 +54,6 @@ func _exit_tree() -> void:
 
   if history_sidebar:
     remove_control_from_docks(history_sidebar)
+
+  if repo:
+    repo.stop();
