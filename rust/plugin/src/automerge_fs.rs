@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
-use automerge::{transaction::Transactable, ChangeHash};
-use godot::prelude::*;
+use automerge::{transaction::Transactable, ChangeHash, Patch};
+use godot::{global::print, prelude::*};
 
+use automerge::patches::TextRepresentation;
 use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHandle};
 use tokio::{net::TcpStream, runtime::Runtime};
 
@@ -12,10 +13,14 @@ pub struct AutomergeFS {
     repo_handle: RepoHandle,
     runtime: Runtime,
     fs_doc_id: DocumentId,
+    base: Base<Node>,
 }
 
 #[godot_api]
 impl AutomergeFS {
+    #[signal]
+    fn changed(path: String, content: String);
+
     #[func]
     fn create(fs_doc_id: String) -> Gd<Self> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -64,23 +69,53 @@ impl AutomergeFS {
                 .await
                 .unwrap();
 
-            let old_heads: Vec<ChangeHash> = vec![];
+            let mut heads: Vec<ChangeHash> = vec![];
 
             loop {
                 doc_handle.changed().await.unwrap();
 
-                let new_heads = doc_handle.with_doc(|d| d.get_heads());
+                println!("fs changed");
 
-                if old_heads != new_heads {
-                    println!("fs changed {:?}", new_heads);
-                }
+                doc_handle.with_doc(|d| {
+                    let new_heads = d.get_heads();
+                    let patches = d.diff(&heads, &new_heads, TextRepresentation::String);
+
+                    for patch in patches {
+                        match patch {
+                            Patch {
+                                obj: _,
+                                path,
+                                action,
+                            } => {
+                                if path.is_empty() {
+                                    match action {
+                                        automerge::PatchAction::PutMap {
+                                            key,
+                                            value: _,
+                                            conflict: _,
+                                        } => {
+                                            println!("remote change {:?}", &key);
+                                        }
+                                        _ => todo!(),
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
+
+                        // println!("patch: {:?}", patch);
+                    }
+
+                    heads = new_heads
+                });
             }
         });
 
-        return Gd::from_init_fn(|_base| Self {
+        return Gd::from_init_fn(|base| Self {
             repo_handle,
             fs_doc_id: doc_id_clone,
             runtime,
+            base,
         });
     }
 
