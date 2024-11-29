@@ -3,7 +3,7 @@ extends EditorPlugin
 
 var file_change_listener: FileChangeListener
 var automerge_fs: AutomergeFS
-var history_sidebar
+var sidebar
 
 func _enter_tree() -> void:
   # /efc9/08d79d8e432046c0b8df0e320d5edf0
@@ -17,6 +17,10 @@ func _enter_tree() -> void:
   file_change_listener = FileChangeListener.new(get_editor_interface().get_resource_filesystem())
   file_change_listener.file_changed.connect(_on_local_file_changed)
 
+  # setup sidebar
+  sidebar = preload("res://addons/patchwork/sidebar.tscn").instantiate()
+  sidebar.init(get_editor_interface())
+  add_control_to_dock(DOCK_SLOT_RIGHT_UL, sidebar)
 
 func _on_local_file_changed(path: String, content: String) -> void:
   # for now ignore all files that are not main.tscn
@@ -39,18 +43,22 @@ func _on_remote_file_changed(path: String, content: String) -> void:
   file.store_string(content)
   file.close()
   
+  print("reload path", path)
+
   # Reload file
   get_editor_interface().reload_scene_from_path(path)
-  print("remote file changed ", path);
+  print("remote file changed ", path)
 
 
 func _process(delta: float) -> void:
+  # print(get_editor_interface().get_playing_scene());
+
   if automerge_fs:
     automerge_fs.refresh();
 
 func _exit_tree() -> void:
-  if history_sidebar:
-    remove_control_from_docks(history_sidebar)
+  if sidebar:
+    remove_control_from_docks(sidebar)
 
   if automerge_fs:
     automerge_fs.stop();
