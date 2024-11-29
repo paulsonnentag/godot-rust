@@ -9,6 +9,7 @@ func _enter_tree() -> void:
 
   # /efc9/08d79d8e432046c0b8df0e320d5edf0
   automerge_fs = AutomergeFS.create("08d79d8e432046c0b8df0e320d5edf0b")
+  automerge_fs.start();
 
   # setup file system sync
   file_change_listener = FileChangeListener.new(get_editor_interface().get_resource_filesystem())
