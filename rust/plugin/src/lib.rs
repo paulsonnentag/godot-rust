@@ -6,3 +6,4 @@ struct MyExtension;
 unsafe impl ExtensionLibrary for MyExtension {}
 
 mod automerge_fs;
+mod godot_scene;

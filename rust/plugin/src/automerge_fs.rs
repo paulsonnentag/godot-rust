@@ -11,6 +11,8 @@ use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHand
 use tokio::{net::TcpStream, runtime::Runtime};
 use tree_sitter::{Parser, Query, QueryCursor};
 
+use crate::godot_scene;
+
 #[derive(GodotClass)]
 #[class(no_init, base=Node)]
 pub struct AutomergeFS {
@@ -172,92 +174,13 @@ impl AutomergeFS {
         let fs_doc_id = self.fs_doc_id.clone();
         let path_clone = path.clone();
         let content_clone = content.clone();
-        let content_clone_2 = content.clone();
 
         println!("save {:?}", path);
 
         if path.ends_with(".tscn") {
-            let mut parser = Parser::new();
-            parser
-                .set_language(tree_sitter_godot_resource::language())
-                .expect("Error loading godot resource grammar");
+            let scene = godot_scene::parse(&content).unwrap();
 
-            let result = parser.parse(content, None);
-            let cloned_result = result.clone();
-
-            /*  let tree = result.unwrap();
-            println!("parse tree:");
-            println!("{}", tree.root_node().to_sexp()); */
-
-            match cloned_result {
-                Some(tree) => {
-                    let content_bytes = content_clone_2.as_bytes();
-
-                    // Query for section attributes and paths
-                    let query = "(section 
-                        (attribute (identifier) @name_id (#eq? @name_id \"name\") (string) @name_value)
-                        (attribute (identifier) @parent_id (#eq? @parent_id \"parent\") (string) @parent_value)?
-                        (attribute (identifier) @instance_id (#eq? @instance_id \"instance\") (constructor) @instance_value)?
-                        (property (path) @path_key (_) @path_value)*
-                    )";
-                    let query = Query::new(tree_sitter_godot_resource::language(), query)
-                        .expect("Invalid query");
-                    let mut query_cursor = QueryCursor::new();
-                    let matches = query_cursor.matches(&query, tree.root_node(), content_bytes);
-
-                    for m in matches {
-                        let mut name = "";
-                        let mut parent = "";
-                        let mut instance = "";
-                        let mut properties = Vec::new();
-
-                        for capture in m.captures {
-                            match capture.index {
-                                1 => {
-                                    // @name_value
-                                    if let Ok(val) = capture.node.utf8_text(content_bytes) {
-                                        name = val;
-                                    }
-                                }
-                                3 => {
-                                    // @parent_value
-                                    if let Ok(val) = capture.node.utf8_text(content_bytes) {
-                                        parent = val;
-                                    }
-                                }
-                                5 => {
-                                    // @instance_value
-                                    if let Ok(val) = capture.node.utf8_text(content_bytes) {
-                                        instance = val;
-                                    }
-                                }
-                                6 => {
-                                    // @path_key
-                                    if let Ok(path) = capture.node.utf8_text(content_bytes) {
-                                        if let Some(next_capture) =
-                                            m.captures.get(capture.index as usize + 1)
-                                        {
-                                            if let Ok(value) =
-                                                next_capture.node.utf8_text(content_bytes)
-                                            {
-                                                properties
-                                                    .push((path.to_string(), value.to_string()));
-                                            }
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-
-                        println!(
-                            "Section: name={}, parent={}, instance={}, properties={:?}",
-                            name, parent, instance, properties
-                        );
-                    }
-                }
-                None => println!("invalid"),
-            }
+            println!("scene {:?}", scene)
         }
 
         self.runtime.spawn(async move {
