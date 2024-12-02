@@ -2,14 +2,15 @@
 extends MarginContainer
 
 var editor_interface: EditorInterface
+var undo_redo_manager: EditorUndoRedoManager
 
 @onready var simulated_edits_checkbox: CheckBox = %SimulatedEditsCheckbox
 
-func init(editor_interface: EditorInterface) -> void:
-  self.editor_interface = editor_interface
+func init(editor_plugin: EditorPlugin) -> void:
+  self.editor_interface = editor_plugin.get_editor_interface()
+  self.undo_redo_manager = editor_plugin.get_undo_redo()
 
-
-var last_save_time: int = 0
+var last_update_time: int = 0
 
 func _process(_delta: float) -> void:
   if !editor_interface:
@@ -23,10 +24,10 @@ func _process(_delta: float) -> void:
 
     if paddle:
     
-      # Save every 2000ms (2 seconds)
       if (current_time - last_save_time) >= 1000:
-        # Generate random rotation between -180 and 180 degrees
-        paddle.rotation_degrees = randf_range(-180, 180)
+        undo_redo_manager.create_action("Rotate paddle randomly")
+        undo_redo_manager.add_do_property(paddle, "rotation_degrees", randf_range(-180, 180))
+        undo_redo_manager.add_undo_property(paddle, "rotation_degrees", paddle.rotation_degrees)
+        undo_redo_manager.commit_action()
 
-        last_save_time = current_time
-        editor_interface.save_scene()
+        last_update_time = current_time

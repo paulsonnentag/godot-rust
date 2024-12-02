@@ -1,25 +1,39 @@
 @tool
 class_name FileChangeListener
 
-var file_system: EditorFileSystem
 var file_contents: Dictionary = {}
+var editor_plugin: EditorPlugin
 
 signal file_changed(path: String, file_name: String)
 
-func _init(file_system: EditorFileSystem):
-  self.file_system = file_system
+func _init(editor_plugin: EditorPlugin):
+  self.editor_plugin = editor_plugin
 
-  print("start fs listener")
-
+  # listen to file system
+  var file_system = editor_plugin.get_editor_interface().get_resource_filesystem();
   file_system.connect("filesystem_changed", _on_filesystem_changed)
   file_system.connect("resources_reload", _on_resources_reloaded)
 
+  # listen to changes of scene file
+  editor_plugin.get_undo_redo().connect("history_changed", _on_history_changed);
+
+  
 func stop():
+  var file_system = editor_plugin.get_editor_interface().get_resource_filesystem()
+
   # Cleanup connections when plugin is disabled
   if file_system:
       file_system.disconnect("filesystem_changed", _on_filesystem_changed)
       file_system.disconnect("resources_reload", _on_resources_reloaded)
-  
+
+func trigger_file_changed(file_path: String, content: String) -> void:
+  var stored_content = file_contents.get(file_path, "")
+  if content != stored_content:
+    file_contents[file_path] = content
+    file_changed.emit(file_path, content)
+
+## FILE SYSTEM CHANGED
+
 func _on_filesystem_changed():
   _scan_for_changes()
 
@@ -55,6 +69,7 @@ func _scan_directory(dir: DirAccess, current_path: String):
 
 func _check_file_changes(file_path: String):
   # Skip files that aren't GDScript or scene file
+  # todo: support binary files
   if not file_path.ends_with(".gd") and not file_path.ends_with(".tscn"):
     return
 
@@ -63,8 +78,40 @@ func _check_file_changes(file_path: String):
       return
   
   var content = file.get_as_text(true)
-  var stored_content = file_contents.get(file_path, "")
 
-  if content != stored_content:
-    file_contents[file_path] = content
-    file_changed.emit(file_path, content)
+  trigger_file_changed(file_path, content)
+
+
+## SCENE CHANGED
+
+# todo: figure out how to do this without creating a temp file
+func _on_history_changed():
+  print("changed history")
+  var root = editor_plugin.get_editor_interface().get_edited_scene_root()
+  if root:
+    var packed_scene = PackedScene.new()
+    packed_scene.pack(root)
+    
+    # Create temp directory if it doesn't exist
+    var dir = DirAccess.open("res://")
+    if !dir.dir_exists("addons/patchwork/tmp"):
+      dir.make_dir_recursive("addons/patrok/tmp")
+    
+    var temp_path = "res://addons/patchwork/tmp/temp_scene.tscn"
+    
+    # Save to temp file
+    var error = ResourceSaver.save(packed_scene, temp_path)
+    if error != OK:
+      print("Error saving scene: ", error)
+      return
+      
+    # Read the file contents
+    var file = FileAccess.open(temp_path, FileAccess.READ)
+    if file:
+      var content = file.get_as_text()
+      trigger_file_changed(root.scene_file_path, content)
+      file.close()
+
+      
+    # Delete the temp file
+    dir.remove(temp_path)
