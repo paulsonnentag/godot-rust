@@ -37,6 +37,10 @@ movie_writer/movie_file="/tmp/moddable-pong-recording.avi"
 
 enabled=PackedStringArray("res://addons/DampedOscillator/plugin.cfg", "res://addons/patchwork/plugin.cfg", "res://addons/plugin_refresher/plugin.cfg")
 
+[gui]
+
+theme/default_font_multichannel_signed_distance_field=true
+
 [input]
 
 player_2_up={
