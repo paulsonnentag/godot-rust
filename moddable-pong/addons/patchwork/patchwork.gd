@@ -10,7 +10,6 @@ func _enter_tree() -> void:
 
   print("start patchwork");
 
-  # /efc9/08d79d8e432046c0b8df0e320d5edf0
   automerge_fs = AutomergeFS.create("08d79d8e432046c0b8df0e320d5edf0b")
   automerge_fs.start();
 
