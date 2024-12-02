@@ -13,13 +13,12 @@ func _enter_tree() -> void:
   automerge_fs = AutomergeFS.create("08d79d8e432046c0b8df0e320d5edf0b")
   automerge_fs.start();
 
-  # listen to remove changes
+  # listen to remote changes
   automerge_fs.file_changed.connect(_on_remote_file_changed)
 
   # listen to local changes
   file_change_listener = FileChangeListener.new(self)
   file_change_listener.connect("file_changed", _on_local_file_changed)
-
 
   # setup sidebar
   sidebar = preload("res://addons/patchwork/sidebar.tscn").instantiate()
