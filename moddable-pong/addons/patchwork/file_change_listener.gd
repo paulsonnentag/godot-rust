@@ -4,18 +4,20 @@ class_name FileChangeListener
 var file_contents: Dictionary = {}
 var editor_plugin: EditorPlugin
 
+
 signal file_changed(path: String, file_name: String)
 
 func _init(editor_plugin: EditorPlugin):
   self.editor_plugin = editor_plugin
 
+
   # listen to file system
-  var file_system = editor_plugin.get_editor_interface().get_resource_filesystem();
-  file_system.connect("filesystem_changed", _on_filesystem_changed)
-  file_system.connect("resources_reload", _on_resources_reloaded)
+  var file_system = editor_plugin.get_editor_interface().get_resource_filesystem()
+  # file_system.connect("filesystem_changed", _on_filesystem_changed)
+  # file_system.connect("resources_reload", _on_resources_reloaded)
 
   # listen to changes of scene file
-  editor_plugin.get_undo_redo().connect("history_changed", _on_history_changed);
+  editor_plugin.get_undo_redo().connect("history_changed", _on_history_changed)
 
   
 func stop():
@@ -23,8 +25,9 @@ func stop():
 
   # Cleanup connections when plugin is disabled
   if file_system:
-      file_system.disconnect("filesystem_changed", _on_filesystem_changed)
-      file_system.disconnect("resources_reload", _on_resources_reloaded)
+    pass
+    #file_system.disconnect("filesystem_changed", _on_filesystem_changed)
+    #file_system.disconnect("resources_reload", _on_resources_reloaded)
 
 func trigger_file_changed(file_path: String, content: String) -> void:
   var stored_content = file_contents.get(file_path, "")
@@ -79,12 +82,14 @@ func _check_file_changes(file_path: String):
   
   var content = file.get_as_text(true)
 
+
   trigger_file_changed(file_path, content)
 
 
 ## SCENE CHANGED
 
 # todo: figure out how to do this without creating a temp file
+# todo: figure out how to make ids stable
 func _on_history_changed():
   print("changed history")
   var root = editor_plugin.get_editor_interface().get_edited_scene_root()
@@ -97,7 +102,7 @@ func _on_history_changed():
     if !dir.dir_exists("addons/patchwork/tmp"):
       dir.make_dir_recursive("addons/patrok/tmp")
     
-    var temp_path = "res://addons/patchwork/tmp/temp_scene.tscn"
+    var temp_path = "res://addons/patchwork/tmp/scene.tscn"
     
     # Save to temp file
     var error = ResourceSaver.save(packed_scene, temp_path)
@@ -114,4 +119,4 @@ func _on_history_changed():
 
       
     # Delete the temp file
-    dir.remove(temp_path)
+    #dir.remove(temp_path)

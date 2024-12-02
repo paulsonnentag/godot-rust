@@ -24,7 +24,7 @@ func _process(_delta: float) -> void:
 
     if paddle:
     
-      if (current_time - last_save_time) >= 1000:
+      if (current_time - last_update_time) >= 1000:
         undo_redo_manager.create_action("Rotate paddle randomly")
         undo_redo_manager.add_do_property(paddle, "rotation_degrees", randf_range(-180, 180))
         undo_redo_manager.add_undo_property(paddle, "rotation_degrees", paddle.rotation_degrees)
