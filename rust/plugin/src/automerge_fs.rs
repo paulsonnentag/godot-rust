@@ -3,13 +3,13 @@ use std::{
     sync::mpsc::{channel, Receiver, Sender},
 };
 
-use automerge::{transaction::Transactable, ChangeHash, Patch, ScalarValue};
+use automerge::{ChangeHash, Patch, ScalarValue};
+use autosurgeon::reconcile;
 use godot::{obj::WithBaseField, prelude::*};
 
 use automerge::patches::TextRepresentation;
 use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHandle};
 use tokio::{net::TcpStream, runtime::Runtime};
-use tree_sitter::{Parser, Query, QueryCursor};
 
 use crate::godot_scene;
 
@@ -131,36 +131,7 @@ impl AutomergeFS {
                     let new_heads = d.get_heads();
                     let patches = d.diff(&heads, &new_heads, TextRepresentation::String);
 
-                    for patch in patches {
-                        match patch {
-                            Patch {
-                                obj: _,
-                                path,
-                                action,
-                            } => {
-                                if path.is_empty() {
-                                    if let automerge::PatchAction::PutMap {
-                                        key,
-                                        value: (automerge::Value::Scalar(v), _),
-                                        ..
-                                    } = action
-                                    {
-                                        match v.as_ref() {
-                                            ScalarValue::Str(smol_str) => {
-                                                println!("rust: send {:?}", key);
-
-                                                let _ = sender.send(FileUpdate {
-                                                    path: key,
-                                                    content: smol_str.to_string(),
-                                                });
-                                            }
-                                            _ => (),
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    println!("patches: {:?}", patches);
 
                     heads = new_heads
                 });
@@ -172,16 +143,15 @@ impl AutomergeFS {
     fn save(&self, path: String, content: String) {
         let repo_handle = self.repo_handle.clone();
         let fs_doc_id = self.fs_doc_id.clone();
-        let path_clone = path.clone();
-        let content_clone = content.clone();
 
         println!("save {:?}", path);
 
-        if path.ends_with(".tscn") {
-            let scene = godot_scene::parse(&content).unwrap();
-
-            println!("scene {:?}", scene)
+        // todo: handle non scene files
+        if !path.ends_with(".tscn") {
+            return;
         }
+
+        let scene = godot_scene::parse(&content).unwrap();
 
         self.runtime.spawn(async move {
             let doc_handle = repo_handle.request_document(fs_doc_id);
@@ -189,8 +159,8 @@ impl AutomergeFS {
 
             result.with_doc_mut(|d| {
                 let mut tx = d.transaction();
-                tx.put(automerge::ROOT, path, content_clone)
-                    .expect(&format!("Failed to save {:?}", path_clone));
+
+                let _ = reconcile(&mut tx, scene);
                 tx.commit();
 
                 return;

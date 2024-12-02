@@ -1,17 +1,19 @@
-use godot::builtin::Dictionary;
+use autosurgeon::{Hydrate, Reconcile};
+use std::collections::HashMap;
 use tree_sitter::{Parser, Query, QueryCursor};
-#[derive(Debug)]
+
+#[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
 pub struct PackedGodotScene {
     // todo: parse  resources and connections
     nodes: std::collections::HashMap<String, GodotSceneNode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
 pub struct GodotSceneNode {
     name: String,
     parent: String,
     instance: String,
-    props: Dictionary,
+    props: HashMap<String, String>,
 }
 
 pub fn parse(source: &String) -> Result<PackedGodotScene, String> {
@@ -45,7 +47,7 @@ pub fn parse(source: &String) -> Result<PackedGodotScene, String> {
                 let mut name = "";
                 let mut parent = "";
                 let mut instance = "";
-                let mut props = Dictionary::new();
+                let mut props = HashMap::new();
 
                 for capture in m.captures {
                     match capture.index {
