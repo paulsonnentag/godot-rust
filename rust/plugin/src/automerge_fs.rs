@@ -26,6 +26,8 @@ struct FileUpdate {
     content: String,
 }
 
+const SERVER_URL: &str = "7.tcp.eu.ngrok.io:16278";
+
 #[godot_api]
 impl AutomergeFS {
     #[signal]
@@ -54,7 +56,7 @@ impl AutomergeFS {
             // Start a client.
             let stream = loop {
                 // Try to connect to a peer
-                let res = TcpStream::connect("127.0.0.1:8080").await;
+                let res = TcpStream::connect(SERVER_URL).await;
                 if let Err(e) = res {
                     println!("error connecting: {:?}", e);
                     continue;
@@ -65,7 +67,7 @@ impl AutomergeFS {
             println!("connect repo");
 
             repo_handle_clone
-                .connect_tokio_io("127.0.0.1:8080", stream, ConnDirection::Outgoing)
+                .connect_tokio_io(SERVER_URL, stream, ConnDirection::Outgoing)
                 .await
                 .unwrap();
         });
