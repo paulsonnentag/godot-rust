@@ -9,6 +9,7 @@ use godot::{obj::WithBaseField, prelude::*};
 use automerge::patches::TextRepresentation;
 use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHandle};
 use tokio::{net::TcpStream, runtime::Runtime};
+use tree_sitter::Parser;
 
 #[derive(GodotClass)]
 #[class(no_init, base=Node)]
@@ -170,6 +171,21 @@ impl AutomergeFS {
         let repo_handle = self.repo_handle.clone();
         let fs_doc_id = self.fs_doc_id.clone();
         let path_clone = path.clone();
+        let content_clone = content.clone();
+
+        if path.ends_with(".tscn") {
+            let mut parser = Parser::new();
+            parser
+                .set_language(tree_sitter_godot_resource::language())
+                .expect("Error loading godot resource grammar");
+
+            let result = parser.parse(content, None);
+
+            match result {
+                Some(tree) => println!("parsed {:?}", tree.root_node()),
+                None => println!("invalid"),
+            }
+        }
 
         self.runtime.spawn(async move {
             let doc_handle = repo_handle.request_document(fs_doc_id);
@@ -177,7 +193,7 @@ impl AutomergeFS {
 
             result.with_doc_mut(|d| {
                 let mut tx = d.transaction();
-                tx.put(automerge::ROOT, path, content)
+                tx.put(automerge::ROOT, path, content_clone)
                     .expect(&format!("Failed to save {:?}", path_clone));
                 tx.commit();
 
