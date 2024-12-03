@@ -16,18 +16,6 @@ pub struct GodotSceneNode {
     properties: HashMap<String, String>, // key value pairs below the section header
 }
 
-#[derive(Debug)]
-pub enum SceneChangePatch {
-    Change {
-        node_path: String,
-        properties: Dictionary,
-        attributes: Dictionary,
-    },
-    Delete {
-        node_path: String,
-    },
-}
-
 // WIP custom reconciler
 /*
 fn get_string(value: automerge::Value) -> Option<String> {

@@ -12,7 +12,7 @@ use automerge::patches::TextRepresentation;
 use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHandle};
 use tokio::{net::TcpStream, runtime::Runtime};
 
-use crate::godot_scene::{self, get_scene_change_patch, PackedGodotScene, SceneChangePatch};
+use crate::godot_scene::{self, PackedGodotScene};
 
 #[derive(GodotClass)]
 #[class(no_init, base=Node)]
@@ -28,6 +28,17 @@ pub struct AutomergeFS {
 struct FileChange {
     file_path: String,
     patch: SceneChangePatch,
+}
+
+pub enum SceneChangePatch {
+    Change {
+        node_path: String,
+        properties: Dictionary,
+        attributes: Dictionary,
+    },
+    Delete {
+        node_path: String,
+    },
 }
 
 #[godot_api]
