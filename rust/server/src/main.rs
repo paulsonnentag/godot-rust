@@ -1,6 +1,6 @@
 use automerge_repo::tokio::FsStorage;
 use automerge_repo::{ConnDirection, Repo};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::runtime::Handle;
 use tracing_subscriber;
@@ -18,7 +18,7 @@ async fn main() {
     let repo_clone = repo_handle.clone();
     handle.spawn(async move {
         let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
-        let addr = format!("127.0.0.1:{}", port);
+        let addr = format!("0.0.0.0:{}", port);
         let listener = TcpListener::bind(&addr).await.unwrap();
 
         println!("started server on localhost:{}", port);
