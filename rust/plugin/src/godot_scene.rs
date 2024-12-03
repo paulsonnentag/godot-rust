@@ -8,12 +8,10 @@ pub struct PackedGodotScene {
     nodes: std::collections::HashMap<String, GodotSceneNode>,
 }
 
-#[derive(Debug, Clone, Hydrate, PartialEq)]
+#[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
 pub struct GodotSceneNode {
-    name: String,
-    parent: String,
-    instance: String,
-    props: HashMap<String, String>,
+    attributes: HashMap<String, String>,
+    properties: HashMap<String, String>,
 }
 
 // WIP custom reconciler
@@ -70,17 +68,26 @@ pub fn parse(source: &String) -> Result<PackedGodotScene, String> {
 
     let result = parser.parse(source, None);
 
+    /*
+    println!(
+        "Tree s-expression:\n{}",
+        result.clone().unwrap().root_node().to_sexp()
+    );
+    */
+
     return match result {
         Some(tree) => {
             let content_bytes = source.as_bytes();
-
             // Query for section attributes and paths
-            let query = "(section 
-              (attribute (identifier) @name_id (#eq? @name_id \"name\") (string) @name_value)
-              (attribute (identifier) @parent_id (#eq? @parent_id \"parent\") (string) @parent_value)?
-              (attribute (identifier) @instance_id (#eq? @instance_id \"instance\") (constructor) @instance_value)?
-              (property (path) @path_key (_) @path_value)*
-          )";
+            let query = "(section
+                (identifier) @section_id
+                (attribute 
+                    (identifier) @attr_key 
+                    (_) @attr_value)*
+                (property 
+                    (path) @prop_key 
+                    (_) @prop_value)*
+            )";
             let query =
                 Query::new(tree_sitter_godot_resource::language(), query).expect("Invalid query");
             let mut query_cursor = QueryCursor::new();
@@ -90,59 +97,98 @@ pub fn parse(source: &String) -> Result<PackedGodotScene, String> {
             };
 
             for m in matches {
-                let mut name = "";
-                let mut parent = "";
-                let mut instance = "";
-                let mut props = HashMap::new();
+                let mut attributes = HashMap::new();
+                let mut properties = HashMap::new();
+                let mut section_id = String::new();
 
-                for capture in m.captures {
-                    match capture.index {
-                        1 => {
-                            // @name_value
-                            if let Ok(val) = capture.node.utf8_text(content_bytes) {
-                                name = val;
+                for (i, capture) in m.captures.iter().enumerate() {
+                    if let Ok(text) = capture.node.utf8_text(content_bytes) {
+                        match capture.index {
+                            0 => {
+                                // section_id
+                                section_id = text.to_string();
                             }
-                        }
-                        3 => {
-                            // @parent_value
-                            if let Ok(val) = capture.node.utf8_text(content_bytes) {
-                                parent = val;
-                            }
-                        }
-                        5 => {
-                            // @instance_value
-                            if let Ok(val) = capture.node.utf8_text(content_bytes) {
-                                instance = val;
-                            }
-                        }
-                        6 => {
-                            // @path_key
-                            if let Ok(path) = capture.node.utf8_text(content_bytes) {
-                                if let Some(next_capture) =
-                                    m.captures.get(capture.index as usize + 1)
-                                {
-                                    if let Ok(value) = next_capture.node.utf8_text(content_bytes) {
-                                        props.insert(path.to_string(), value.to_string());
+                            1 => {
+                                // attr_key
+                                if let Some(value_capture) = m.captures.get(i + 1) {
+                                    if let Ok(value) = value_capture.node.utf8_text(content_bytes) {
+                                        attributes.insert(text.to_string(), value.to_string());
                                     }
                                 }
                             }
+                            3 => {
+                                // prop_key
+                                if let Some(value_capture) = m.captures.get(i + 1) {
+                                    if let Ok(value) = value_capture.node.utf8_text(content_bytes) {
+                                        properties.insert(text.to_string(), value.to_string());
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
 
-                let node = GodotSceneNode {
-                    name: name.to_string(),
-                    parent: parent.to_string(),
-                    instance: instance.to_string(),
-                    props,
-                };
+                // todo: handle other sections
 
-                scene.nodes.insert(name.to_string(), node);
+                if section_id == "node" {
+                    let node = GodotSceneNode {
+                        attributes,
+                        properties,
+                    };
+
+                    let node_clone = node.clone();
+                    let scene_clone = scene.clone();
+                    if let Some(node_path) = get_node_path(scene_clone, node) {
+                        scene.nodes.insert(node_path, node_clone);
+                    }
+                    continue;
+                }
             }
 
             Ok(scene)
         }
         None => Err("Failed to parse scene file".to_string()),
     };
+}
+
+fn get_node_path(scene: PackedGodotScene, node: GodotSceneNode) -> Option<String> {
+    // Get the current node's name
+
+    let scene_clone = scene.clone();
+    let node_clone = node.clone();
+
+    if let Some(name) = get_node_name(node_clone) {
+        // Base case - if parent is "." or no parent, just return name
+        match get_node_parent(node) {
+            None => None,
+            Some(parent_name) => {
+                // Look up parent node in scene
+                if let Some(parent_node) = scene.nodes.get(&parent_name) {
+                    // Recursively get parent's path and combine
+                    if let Some(parent_path) = get_node_path(scene_clone, parent_node.clone()) {
+                        Some(format!("{}/{}", parent_path, name))
+                    } else {
+                        Some(name)
+                    }
+                } else {
+                    Some(name)
+                }
+            }
+        }
+    } else {
+        None
+    }
+}
+
+fn get_node_parent(node: GodotSceneNode) -> Option<String> {
+    node.attributes
+        .get("parent")
+        .map(|p| p[1..p.len() - 1].to_string())
+}
+
+fn get_node_name(node: GodotSceneNode) -> Option<String> {
+    node.attributes
+        .get("name")
+        .map(|n| n[1..n.len() - 1].to_string())
 }

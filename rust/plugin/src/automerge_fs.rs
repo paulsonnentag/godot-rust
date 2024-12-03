@@ -5,7 +5,7 @@ use std::{
 
 use automerge::{ChangeHash, Patch, ScalarValue};
 use autosurgeon::reconcile;
-use godot::{obj::WithBaseField, prelude::*};
+use godot::{classes::node, obj::WithBaseField, prelude::*};
 
 use automerge::patches::TextRepresentation;
 use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHandle};
@@ -20,13 +20,24 @@ pub struct AutomergeFS {
     runtime: Runtime,
     fs_doc_id: DocumentId,
     base: Base<Node>,
-    sender: Sender<FileUpdate>,
-    receiver: Receiver<FileUpdate>,
+    sender: Sender<FileChange>,
+    receiver: Receiver<FileChange>,
 }
 
-struct FileUpdate {
-    path: String,
-    content: String,
+struct FileChange {
+    file_path: String,
+    patch: SceneChangePatch,
+}
+
+enum SceneChangePatch {
+    Change {
+        node_path: String,
+        properties: Dictionary,
+        attributes: Dictionary,
+    },
+    Delete {
+        node_path: String,
+    },
 }
 
 #[godot_api]
@@ -73,7 +84,7 @@ impl AutomergeFS {
                 .unwrap();
         });
 
-        let (sender, receiver) = channel::<FileUpdate>();
+        let (sender, receiver) = channel::<FileChange>();
 
         return Gd::from_init_fn(|base| Self {
             repo_handle,
@@ -99,10 +110,27 @@ impl AutomergeFS {
         let update = self.receiver.try_recv();
 
         match update {
-            Ok(update) => {
+            Ok(file_change) => {
+                let patch_dict: Dictionary = match file_change.patch {
+                    SceneChangePatch::Change {
+                        node_path,
+                        properties,
+                        attributes,
+                    } => dict! {
+                      "type": "update",
+                      "node_path": node_path,
+                      "properties": properties,
+                      "attributes": attributes
+                    },
+                    SceneChangePatch::Delete { node_path } => dict! {
+                      "type" : "delete",
+                      "node_path": node_path
+                    },
+                };
+
                 self.base_mut().emit_signal(
                     "file_changed",
-                    &[update.path.to_variant(), update.content.to_variant()],
+                    &[file_change.file_path.to_variant(), patch_dict.to_variant()],
                 );
             }
             Err(_) => (),
@@ -131,7 +159,14 @@ impl AutomergeFS {
                     let new_heads = d.get_heads();
                     let patches = d.diff(&heads, &new_heads, TextRepresentation::String);
 
-                    println!("patches: {:?}", patches);
+                    //println!("patches: {:?}", patches);
+
+                    for patch in patches {
+                        let path = patch.path;
+                        if let Some(node_path) = get_updated_node_path(path.clone()) {
+                            println!("update {}", node_path)
+                        }
+                    }
 
                     heads = new_heads
                 });
@@ -153,18 +188,32 @@ impl AutomergeFS {
 
         let scene = godot_scene::parse(&content).unwrap();
 
+        //println!("Scene contents: {:#?}", scene);
+
         self.runtime.spawn(async move {
             let doc_handle = repo_handle.request_document(fs_doc_id);
             let result = doc_handle.await.unwrap();
 
             result.with_doc_mut(|d| {
                 let mut tx = d.transaction();
-
                 let _ = reconcile(&mut tx, scene);
                 tx.commit();
-
                 return;
             });
         });
+    }
+}
+
+// isn't this how you program rust?
+fn get_updated_node_path(path: Vec<(automerge::ObjId, automerge::Prop)>) -> Option<String> {
+    match (path.get(0), path.get(1)) {
+        (Some((_, automerge::Prop::Map(key))), Some((_, automerge::Prop::Map(node_path)))) => {
+            if key == "nodes" {
+                Some(node_path.to_string())
+            } else {
+                None
+            }
+        }
+        _ => None,
     }
 }
