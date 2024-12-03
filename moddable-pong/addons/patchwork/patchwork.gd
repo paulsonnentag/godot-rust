@@ -33,35 +33,60 @@ func _on_local_file_changed(path: String, content: String) -> void:
   print("file changed ", path);
   automerge_fs.save(path, content);
 
-func _on_remote_file_changed(path: String, content: String) -> void:
-  # for now ignore all files that are not main.tscn
-  if not path.ends_with("main.tscn"):
-    return
+func _on_remote_file_changed(patch) -> void:
+  print("patch", patch);
 
-  # Check if file exists and get current content
-  var current_file = FileAccess.open(path, FileAccess.READ)
-  if not current_file:
-    return
-  var current_content = current_file.get_as_text()
-  current_file.close()
 
-  # Skip if content hasn't changed
-  if current_content == content:
-    return
+  var node_path = patch.node_path
+  var file_path = patch.file_path
 
-  var file = FileAccess.open(path, FileAccess.WRITE)
-  if not file:
+  var scene = get_editor_interface().get_edited_scene_root()
+
+  if not scene:
+    print("skip: no scene loaded")
     return
     
-  # Write the content to the file
-  file.store_string(content)
-  file.close()
-  
-  print("reload path", path)
+  if scene.scene_file_path != file_path:
+    print("skip: wrong scene file path - expected ", file_path, " but got ", scene.scene_file_path)
+    return
+    
+  var node = scene.get_node(node_path)
+  if not node:
+    print("skip: could not find node at path ", node_path)
+    return
 
-  # Reload file
-  get_editor_interface().reload_scene_from_path(path)
-  print("remote file changed ", path)
+  if patch.type == "property_changed":
+    node.set(patch.key, str_to_var(patch.value))
+
+
+  # # for now ignore all files that are not main.tscn
+  # if not path.ends_with("main.tscn"):
+  #   return
+
+  # # Check if file exists and get current content
+  # var current_file = FileAccess.open(path, FileAccess.READ)
+  # if not current_file:
+  #   return
+  # var current_content = current_file.get_as_text()
+  # current_file.close()
+
+  # # Skip if content hasn't changed
+  # if current_content == content:
+  #   return
+
+  # var file = FileAccess.open(path, FileAccess.WRITE)
+  # if not file:
+  #   return
+    
+  # # Write the content to the file
+  # file.store_string(content)
+  # file.close()
+  
+  # print("reload path", path)
+
+  # # Reload file
+  # get_editor_interface().reload_scene_from_path(path)
+  # print("remote file changed ", path)
 
 
 func _process(delta: float) -> void:
