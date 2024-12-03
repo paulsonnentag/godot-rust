@@ -1,5 +1,6 @@
 use automerge_repo::tokio::FsStorage;
 use automerge_repo::{ConnDirection, Repo};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::runtime::Handle;
 use tracing_subscriber;
@@ -16,14 +17,35 @@ async fn main() {
 
     let repo_clone = repo_handle.clone();
     handle.spawn(async move {
-        let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
+        let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+        let addr = format!("127.0.0.1:{}", port);
+        let listener = TcpListener::bind(&addr).await.unwrap();
 
-        println!("started server on localhost:8080");
+        println!("started server on localhost:{}", port);
 
         loop {
             match listener.accept().await {
-                Ok((socket, addr)) => {
+                Ok((mut socket, addr)) => {
                     println!("client connected");
+
+                    // Read first few bytes to check if it's HTTP
+                    let mut buf = [0; 4];
+                    match socket.peek(&mut buf).await {
+                        Ok(_) => {
+                            if buf.starts_with(b"GET ") || buf.starts_with(b"POST") {
+                                // It's an HTTP request, send 200 OK
+                                let response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok";
+                                let _ = socket.write_all(response.as_bytes()).await;
+                                continue;
+                            }
+                        }
+                        Err(e) => {
+                            println!("Error peeking socket: {:?}", e);
+                            continue;
+                        }
+                    }
+
+                    // Not HTTP, handle as automerge connection
                     tokio::spawn({
                         let repo_clone = repo_clone.clone();
                         async move {
