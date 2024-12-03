@@ -1,4 +1,4 @@
-use autosurgeon::{Hydrate, Reconcile};
+use autosurgeon::{reconcile::MapReconciler, Hydrate, Reconcile, Reconciler};
 use std::collections::HashMap;
 use tree_sitter::{Parser, Query, QueryCursor};
 
@@ -8,13 +8,59 @@ pub struct PackedGodotScene {
     nodes: std::collections::HashMap<String, GodotSceneNode>,
 }
 
-#[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
+#[derive(Debug, Clone, Hydrate, PartialEq)]
 pub struct GodotSceneNode {
     name: String,
     parent: String,
     instance: String,
     props: HashMap<String, String>,
 }
+
+// WIP custom reconciler
+/*
+fn get_string(value: automerge::Value) -> Option<String> {
+    match value {
+        automerge::Value::Scalar(v) => match v.as_ref() {
+            automerge::ScalarValue::Str(smol_str) => Some(smol_str.to_string()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn assign<R: autosurgeon::Reconciler>(
+    m: &mut <R as Reconciler>::Map<'_>,
+    key: &str,
+    value: String,
+) {
+    let value_clone = value.clone();
+    match m.entry(key) {
+        Some(v) => {
+            if get_string(v) != Some(value) {
+                m.put(key, value_clone);
+            }
+        }
+        None => {
+            m.put(key, value);
+        }
+    };
+}
+
+impl Reconcile for GodotSceneNode {
+    type Key<'a> = u64;
+
+    fn reconcile<R: autosurgeon::Reconciler>(&self, reconciler: R) -> Result<(), R::Error> {
+        let mut m: <R as Reconciler>::Map<'_> = reconciler.map()?;
+
+        assign(&mut m, "name", self.name.clone());
+        assign(&mut m, "parent", self.parent.clone());
+        assign(&mut m, "instance", self.instance.clone());
+
+        let name_entry = m.entry("name");
+
+        Ok(())
+    }
+}*/
 
 pub fn parse(source: &String) -> Result<PackedGodotScene, String> {
     let mut parser = Parser::new();
