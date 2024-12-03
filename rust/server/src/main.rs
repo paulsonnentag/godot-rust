@@ -31,10 +31,13 @@ async fn main() {
                     tokio::spawn({
                         let repo_clone = repo_clone.clone();
                         async move {
-                            repo_clone
+                            match repo_clone
                                 .connect_tokio_io(addr, socket, ConnDirection::Incoming)
                                 .await
-                                .unwrap();
+                            {
+                                Ok(_) => println!("Client connection completed successfully"),
+                                Err(e) => println!("Client connection error: {:?}", e),
+                            }
                         }
                     });
                 }
