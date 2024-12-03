@@ -1,4 +1,6 @@
+use automerge::Patch;
 use autosurgeon::{reconcile::MapReconciler, Hydrate, Reconcile, Reconciler};
+use godot::builtin::Dictionary;
 use std::collections::HashMap;
 use tree_sitter::{Parser, Query, QueryCursor};
 
@@ -10,8 +12,20 @@ pub struct PackedGodotScene {
 
 #[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
 pub struct GodotSceneNode {
-    attributes: HashMap<String, String>,
-    properties: HashMap<String, String>,
+    attributes: HashMap<String, String>, // key value pairs in the header of the section
+    properties: HashMap<String, String>, // key value pairs below the section header
+}
+
+#[derive(Debug)]
+pub enum SceneChangePatch {
+    Change {
+        node_path: String,
+        properties: Dictionary,
+        attributes: Dictionary,
+    },
+    Delete {
+        node_path: String,
+    },
 }
 
 // WIP custom reconciler
@@ -191,4 +205,16 @@ fn get_node_name(node: GodotSceneNode) -> Option<String> {
     node.attributes
         .get("name")
         .map(|n| n[1..n.len() - 1].to_string())
+}
+
+pub fn get_node_by_path(scene: &PackedGodotScene, path: &str) -> Option<GodotSceneNode> {
+    scene.nodes.get(path).cloned()
+}
+
+pub fn get_node_attributes(node: &GodotSceneNode) -> HashMap<String, String> {
+    node.attributes.clone()
+}
+
+pub fn get_node_properties(node: &GodotSceneNode) -> HashMap<String, String> {
+    node.properties.clone()
 }

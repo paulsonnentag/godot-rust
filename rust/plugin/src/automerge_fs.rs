@@ -1,17 +1,18 @@
 use std::{
+    fs::File,
     str::FromStr,
     sync::mpsc::{channel, Receiver, Sender},
 };
 
 use automerge::{ChangeHash, Patch, ScalarValue};
-use autosurgeon::reconcile;
+use autosurgeon::{hydrate, reconcile};
 use godot::{classes::node, obj::WithBaseField, prelude::*};
 
 use automerge::patches::TextRepresentation;
 use automerge_repo::{tokio::FsStorage, ConnDirection, DocumentId, Repo, RepoHandle};
 use tokio::{net::TcpStream, runtime::Runtime};
 
-use crate::godot_scene;
+use crate::godot_scene::{self, get_scene_change_patch, PackedGodotScene, SceneChangePatch};
 
 #[derive(GodotClass)]
 #[class(no_init, base=Node)]
@@ -27,17 +28,6 @@ pub struct AutomergeFS {
 struct FileChange {
     file_path: String,
     patch: SceneChangePatch,
-}
-
-enum SceneChangePatch {
-    Change {
-        node_path: String,
-        properties: Dictionary,
-        attributes: Dictionary,
-    },
-    Delete {
-        node_path: String,
-    },
 }
 
 #[godot_api]
@@ -143,7 +133,6 @@ impl AutomergeFS {
         let repo_handle_change_listener = self.repo_handle.clone();
         let fs_doc_id = self.fs_doc_id.clone();
         let sender = self.sender.clone();
-
         self.runtime.spawn(async move {
             let doc_handle = repo_handle_change_listener
                 .request_document(fs_doc_id)
@@ -152,23 +141,83 @@ impl AutomergeFS {
 
             let mut heads: Vec<ChangeHash> = vec![];
 
+            // No need to clone sender since we already have a clone from outside the spawn
+
             loop {
                 doc_handle.changed().await.unwrap();
 
-                doc_handle.with_doc(|d| {
+                doc_handle.with_doc(|d| -> () {
                     let new_heads = d.get_heads();
                     let patches = d.diff(&heads, &new_heads, TextRepresentation::String);
+                    heads = new_heads;
 
-                    //println!("patches: {:?}", patches);
+                    let scene: PackedGodotScene = hydrate(d).unwrap();
 
                     for patch in patches {
-                        let path = patch.path;
-                        if let Some(node_path) = get_updated_node_path(path.clone()) {
-                            println!("update {}", node_path)
+                        match patch.action {
+                            // handle update node
+                            automerge::PatchAction::PutMap {
+                                key,
+                                value,
+                                conflict,
+                            } => match (patch.path.get(0), patch.path.get(1)) {
+                                (
+                                    Some((_, automerge::Prop::Map(key))),
+                                    Some((_, automerge::Prop::Map(node_path))),
+                                ) => {
+                                    if key == "nodes" {
+                                        if let Some(node) =
+                                            godot_scene::get_node_by_path(&scene, node_path)
+                                        {
+                                            /*sender
+                                            .send(FileChange {
+                                                file_path: String::from("res://main.tscn"), // todo: generalize
+                                                patch: SceneChangePatch::Change {
+                                                    node_path: node_path.to_string(),
+                                                    properties: Dictionary::from_iter(
+                                                        godot_scene::get_node_properties(&node)
+                                                            .iter()
+                                                            .map(|(k, v)| {
+                                                                (k.clone(), v.clone())
+                                                            }),
+                                                    ),
+                                                    attributes: Dictionary::from_iter(
+                                                        godot_scene::get_node_attributes(&node)
+                                                            .iter()
+                                                            .map(|(k, v)| {
+                                                                (k.clone(), v.clone())
+                                                            }),
+                                                    ),
+                                                },
+                                            })
+                                            .unwrap();*/
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            },
+
+                            // handle delete node
+                            automerge::PatchAction::DeleteMap { key: node_path } => {
+                                match patch.path.get(0) {
+                                    Some((_, automerge::Prop::Map(key))) => {
+                                        if key == "nodes" {
+                                            /*sender
+                                            .send(FileChange {
+                                                file_path: String::from("res://main.tscn"), // todo: generalize
+                                                patch: SceneChangePatch::Delete {
+                                                    node_path: node_path.to_string(),
+                                                },
+                                            })
+                                            .unwrap();*/
+                                        }
+                                    }
+                                    _ => {}
+                                };
+                            }
+                            _ => {}
                         }
                     }
-
-                    heads = new_heads
                 });
             }
         });
@@ -181,8 +230,8 @@ impl AutomergeFS {
 
         println!("save {:?}", path);
 
-        // todo: handle non scene files
-        if !path.ends_with(".tscn") {
+        // todo: handle files that are not main.tscn
+        if (!path.ends_with("main.tscn")) {
             return;
         }
 
@@ -201,19 +250,5 @@ impl AutomergeFS {
                 return;
             });
         });
-    }
-}
-
-// isn't this how you program rust?
-fn get_updated_node_path(path: Vec<(automerge::ObjId, automerge::Prop)>) -> Option<String> {
-    match (path.get(0), path.get(1)) {
-        (Some((_, automerge::Prop::Map(key))), Some((_, automerge::Prop::Map(node_path)))) => {
-            if key == "nodes" {
-                Some(node_path.to_string())
-            } else {
-                None
-            }
-        }
-        _ => None,
     }
 }
