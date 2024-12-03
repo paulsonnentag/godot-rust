@@ -21,8 +21,8 @@ pub struct AutomergeFS {
     runtime: Runtime,
     fs_doc_id: DocumentId,
     base: Base<Node>,
-    sender: Sender<FileChange>,
-    receiver: Receiver<FileChange>,
+    sender: Sender<Patch>,
+    receiver: Receiver<Patch>,
 }
 
 struct FileChange {
@@ -85,7 +85,7 @@ impl AutomergeFS {
                 .unwrap();
         });
 
-        let (sender, receiver) = channel::<FileChange>();
+        let (sender, receiver) = channel::<Patch>();
 
         return Gd::from_init_fn(|base| Self {
             repo_handle,
@@ -111,8 +111,76 @@ impl AutomergeFS {
         let update = self.receiver.try_recv();
 
         match update {
-            Ok(file_change) => {
-                let patch_dict: Dictionary = match file_change.patch {
+            Ok(patch) => {
+                match patch.action {
+                    // handle update node
+                    automerge::PatchAction::PutMap {
+                        key,
+                        value,
+                        conflict,
+                    } => match (patch.path.get(0), patch.path.get(1), patch.path.get(2)) {
+                        (
+                            Some((_, automerge::Prop::Map(maybe_nodes))),
+                            Some((_, automerge::Prop::Map(node_path))),
+                            Some((_, automerge::Prop::Map(prop_or_attr))),
+                        ) => {
+                            if maybe_nodes == "nodes" {
+                                if let automerge::Value::Scalar(v) = value.0 {
+                                    if let ScalarValue::Str(smol_str) = v.as_ref() {
+                                        let string_value = smol_str.to_string();
+
+                                        println!(
+                                            "update {:?} {:?} {:?} {:?} {:?}",
+                                            node_path, prop_or_attr, maybe_nodes, key, string_value
+                                        );
+                                    }
+                                }
+
+                                /*if let Some(node) = godot_scene::get_node_by_path(&scene, node_path)
+                                {
+                                    /*sender
+                                    .send(FileChange {
+                                        file_path: String::from("res://main.tscn"), // todo: generalize
+                                        patch: SceneChangePatch::Change {
+                                            node_path: node_path.to_string(),
+                                            properties: Dictionary::from_iter(
+                                                godot_scene::get_node_properties(&node)
+                                                    .iter()
+                                                    .map(|(k, v)| {
+                                                        (k.clone(), v.clone())
+                                                    }),
+                                            ),
+                                            attributes: Dictionary::from_iter(
+                                                godot_scene::get_node_attributes(&node)
+                                                    .iter()
+                                                    .map(|(k, v)| {
+                                                        (k.clone(), v.clone())
+                                                    }),
+                                            ),
+                                        },
+                                    })
+                                    .unwrap();*/
+                                }*/
+                            }
+                        }
+                        _ => {}
+                    },
+
+                    // handle delete node
+                    automerge::PatchAction::DeleteMap { key: node_path } => {
+                        match patch.path.get(0) {
+                            Some((_, automerge::Prop::Map(key))) => {
+                                if key == "nodes" {
+                                    println!("delete {:?}", node_path);
+                                }
+                            }
+                            _ => {}
+                        };
+                    }
+                    _ => {}
+                }
+
+                /*let patch_dict: Dictionary = match file_change.patch {
                     SceneChangePatch::Change {
                         node_path,
                         properties,
@@ -132,7 +200,7 @@ impl AutomergeFS {
                 self.base_mut().emit_signal(
                     "file_changed",
                     &[file_change.file_path.to_variant(), patch_dict.to_variant()],
-                );
+                );*/
             }
             Err(_) => (),
         }
@@ -162,72 +230,8 @@ impl AutomergeFS {
                     let patches = d.diff(&heads, &new_heads, TextRepresentation::String);
                     heads = new_heads;
 
-                    let scene: PackedGodotScene = hydrate(d).unwrap();
-
                     for patch in patches {
-                        match patch.action {
-                            // handle update node
-                            automerge::PatchAction::PutMap {
-                                key,
-                                value,
-                                conflict,
-                            } => match (patch.path.get(0), patch.path.get(1)) {
-                                (
-                                    Some((_, automerge::Prop::Map(key))),
-                                    Some((_, automerge::Prop::Map(node_path))),
-                                ) => {
-                                    if key == "nodes" {
-                                        if let Some(node) =
-                                            godot_scene::get_node_by_path(&scene, node_path)
-                                        {
-                                            /*sender
-                                            .send(FileChange {
-                                                file_path: String::from("res://main.tscn"), // todo: generalize
-                                                patch: SceneChangePatch::Change {
-                                                    node_path: node_path.to_string(),
-                                                    properties: Dictionary::from_iter(
-                                                        godot_scene::get_node_properties(&node)
-                                                            .iter()
-                                                            .map(|(k, v)| {
-                                                                (k.clone(), v.clone())
-                                                            }),
-                                                    ),
-                                                    attributes: Dictionary::from_iter(
-                                                        godot_scene::get_node_attributes(&node)
-                                                            .iter()
-                                                            .map(|(k, v)| {
-                                                                (k.clone(), v.clone())
-                                                            }),
-                                                    ),
-                                                },
-                                            })
-                                            .unwrap();*/
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            },
-
-                            // handle delete node
-                            automerge::PatchAction::DeleteMap { key: node_path } => {
-                                match patch.path.get(0) {
-                                    Some((_, automerge::Prop::Map(key))) => {
-                                        if key == "nodes" {
-                                            /*sender
-                                            .send(FileChange {
-                                                file_path: String::from("res://main.tscn"), // todo: generalize
-                                                patch: SceneChangePatch::Delete {
-                                                    node_path: node_path.to_string(),
-                                                },
-                                            })
-                                            .unwrap();*/
-                                        }
-                                    }
-                                    _ => {}
-                                };
-                            }
-                            _ => {}
-                        }
+                        sender.send(patch);
                     }
                 });
             }
