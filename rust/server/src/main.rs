@@ -16,13 +16,9 @@ async fn main() {
 
     let repo_clone = repo_handle.clone();
     handle.spawn(async move {
-        let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+        let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
 
-        let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
-            .await
-            .unwrap();
-
-        println!("started server on localhost:{}", port);
+        println!("started server on localhost:8080");
 
         loop {
             match listener.accept().await {
