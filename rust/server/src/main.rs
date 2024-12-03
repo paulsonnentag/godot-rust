@@ -16,7 +16,14 @@ async fn main() {
 
     let repo_clone = repo_handle.clone();
     handle.spawn(async move {
-        let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
+        let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+
+        let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+            .await
+            .unwrap();
+
+        println!("started server on localhost:{}", port);
+
         loop {
             match listener.accept().await {
                 Ok((socket, addr)) => {
@@ -25,9 +32,9 @@ async fn main() {
                         let repo_clone = repo_clone.clone();
                         async move {
                             repo_clone
-                            .connect_tokio_io(addr, socket, ConnDirection::Incoming)
-                            .await
-                            .unwrap();
+                                .connect_tokio_io(addr, socket, ConnDirection::Incoming)
+                                .await
+                                .unwrap();
                         }
                     });
                 }
